@@ -51,6 +51,9 @@ One of:
 - **NEEDS_IMPROVEMENT**: Plan has issues that should be addressed before execution
 - **MAJOR_REVISION**: Plan has fundamental problems that require rethinking
 
+Immediately after the verdict line, emit a machine-readable HTML comment marker on its own line:
+`<!-- VERDICT: READY -->`, `<!-- VERDICT: NEEDS_IMPROVEMENT -->`, or `<!-- VERDICT: MAJOR_REVISION -->`
+
 ### Recommended Next Steps
 Specific actions to take based on the verdict.
 </output_format>

@@ -1,19 +1,18 @@
 ---
-description: Send a Claude Code plan to Codex for review and return feedback
+description: Review a Claude Code plan via Codex and fix issues found
 argument-hint: '[--wait|--background] [plan-file-path]'
-disable-model-invocation: true
-allowed-tools: Read, Glob, Bash(node:*), AskUserQuestion
+allowed-tools: Read, Glob, Edit, Bash(node:*), AskUserQuestion
 ---
 
-Send a Claude Code implementation plan to Codex for review and return the feedback verbatim.
+Send a Claude Code implementation plan to Codex for review. If critical issues are found, fix the plan based on the feedback.
 
 Raw slash-command arguments:
 `$ARGUMENTS`
 
 Core constraint:
-- This command is review-only.
-- Do not fix issues, apply patches, or suggest that you are about to make changes.
-- Your only job is to run the review and return Codex's output verbatim to the user.
+- Your job is to run the Codex review and, if the verdict is not READY, fix the plan file based on the issues found.
+- Do not fix issues in any file other than the plan file itself.
+- Always display the Codex review output verbatim before any modifications.
 
 Step 1: Identify the plan file
 
@@ -68,9 +67,8 @@ node -e "require('fs').writeFileSync('/tmp/codex-review-plan-$$.md', process.arg
 - The first `node -e` writes the prompt to a temp file.
 - The second `node` runs the Codex task, reading the prompt from that file.
 - `rm -f` cleans up regardless of task exit status (uses `;` not `&&`).
-- Return the command stdout verbatim, exactly as-is.
-- Do not paraphrase, summarize, or add commentary before or after it.
-- Do not fix any issues mentioned in the review output.
+- Display the command stdout verbatim to the user.
+- Do not paraphrase or add commentary before the review output.
 
 Background flow:
 - Launch the review with `Bash` in the background using the same chained command pattern:
@@ -83,8 +81,27 @@ Bash({
 ```
 - Do not call `BashOutput` or wait for completion in this turn.
 - After launching the command, tell the user: "Codex plan review started in the background. Check `/codex:status` for progress."
+- Skip Step 6 (modifications cannot be applied in background mode).
 
 Important: When embedding the prompt string in the `node -e` command, escape any single quotes in the prompt content by replacing `'` with `'\''` to prevent shell interpretation issues.
+
+Step 6: Fix the plan if needed (foreground only)
+
+After displaying the Codex review output:
+
+1. Extract the Verdict from the output:
+   - Look for the `<!-- VERDICT: ... -->` HTML comment marker.
+   - If the marker is not found, search the output text for `**READY**`, `**NEEDS_IMPROVEMENT**`, or `**MAJOR_REVISION**` as a fallback.
+
+2. If the Verdict is **READY**:
+   - No modifications needed. Stop here.
+
+3. If the Verdict is **NEEDS_IMPROVEMENT** or **MAJOR_REVISION**:
+   - Read the plan file using `Read`.
+   - For each issue in the Issues section of the review output:
+     - Apply the Suggestion using the `Edit` tool on the plan file.
+     - Only modify the plan file identified in Step 1. Do not edit any other file.
+   - After all edits, report the changes as a brief bulleted list.
 
 Argument handling:
 - Preserve the user's `--wait` and `--background` flags.
