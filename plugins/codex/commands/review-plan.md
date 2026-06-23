@@ -104,7 +104,7 @@ After displaying the Codex review output:
    - After all edits, report the changes as a brief bulleted list.
 
 Argument handling:
-- Preserve the user's `--wait` and `--background` flags.
+- Preserve the user's `--wait` and `--background` flags.  (default: `--wait`)
 - Do not strip them yourself.
 - Do not add extra flags or rewrite the user's intent.
 - The first positional argument (if present and not a flag) is the plan file path.
