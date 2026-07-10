@@ -1,7 +1,7 @@
 ---
 description: Review a Claude Code plan via Codex and fix issues found
 argument-hint: '[--wait|--background] [plan-file-path]'
-allowed-tools: Read, Glob, Edit, Bash(node:*), AskUserQuestion
+allowed-tools: Read, Glob, Grep, Edit, Bash(node:*), AskUserQuestion
 ---
 
 Send a Claude Code implementation plan to Codex for review. If critical issues are found, fix the plan based on the feedback.
@@ -42,7 +42,13 @@ Step 3: Build the review prompt
 
 - Load the prompt template at `${CLAUDE_PLUGIN_ROOT}/prompts/review-plan.md` using `Read`.
 - Replace `{{PLAN_PATH}}` with the absolute path to the plan file.
-- The plan content is NOT embedded in the prompt. Codex will read the file itself.
+- Build `{{SUPPORTING_CONTEXT}}` before interpolation. Read the plan and collect related source, test, configuration, and documentation files:
+  - Start with repository-relative paths explicitly named in the plan, including `Files:` blocks, inline code paths, and referenced tests or documentation.
+  - Use `Glob` and `Grep` to find the nearest implementation, test, configuration, and documentation files for the plan's named components when paths are incomplete.
+  - Include each selected file as its repository-relative path followed by its content. Prefer direct plan dependencies, their tests, and project guidance/configuration over broad repository dumps.
+  - Include at most 12 files or 100,000 characters total. If a selected file would exceed the budget, include only the sections relevant to the plan and mark the omission; never include secrets, `.env` files, generated artifacts, or binary content.
+  - If no related file can be resolved, write `No additional relevant repository context was found.`
+- Insert the collected content as `<supporting_context>` in the final prompt so Codex receives it with the plan path.
 - Store the final prompt string for use in Step 5.
 
 Step 4: Determine execution mode
@@ -54,6 +60,16 @@ Step 4: Determine execution mode
   - `Wait for results`
   - `Run in background`
 
+Step 4a: Select the Codex model and reasoning effort
+
+Inspect the plan and choose values before launching Codex. Do not ask the user for this routine selection.
+
+- Use `gpt-5.6-luna` with `medium` for a small, conventional plan in one subsystem with established patterns and low change risk.
+- Use `gpt-5.6-terra` with `high` for the normal case: multiple files or components, moderate uncertainty, or meaningful integration and verification work.
+- Use `gpt-5.6-sol` with `xhigh` for a cross-cutting, security- or data-sensitive, migration-heavy, or otherwise high-risk plan whose architectural assumptions need deep scrutiny.
+
+Store the chosen values as `<selected-model>` and `<selected-effort>`. Reassess them if the plan changes materially before a later review invocation.
+
 Step 5: Execute Codex review
 
 Use a node one-liner to write the interpolated prompt to a temporary file, then invoke `codex-companion.mjs task --prompt-file` in a single chained command.
@@ -62,7 +78,7 @@ This ensures the entire command starts with `node`, matching the `Bash(node:*)` 
 Foreground flow:
 - Run a single chained command:
 ```bash
-node -e "require('fs').writeFileSync('/tmp/codex-review-plan-$$.md', process.argv[1])" '<the prompt string from Step 3>' && node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" task --prompt-file /tmp/codex-review-plan-$$.md; rm -f /tmp/codex-review-plan-$$.md
+node -e "require('fs').writeFileSync('/tmp/codex-review-plan-$$.md', process.argv[1])" '<the prompt string from Step 3>' && node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" task --model <selected-model> --effort <selected-effort> --prompt-file /tmp/codex-review-plan-$$.md; rm -f /tmp/codex-review-plan-$$.md
 ```
 - The first `node -e` writes the prompt to a temp file.
 - The second `node` runs the Codex task, reading the prompt from that file.
@@ -74,7 +90,7 @@ Background flow:
 - Launch the review with `Bash` in the background using the same chained command pattern:
 ```typescript
 Bash({
-  command: `node -e "require('fs').writeFileSync('/tmp/codex-review-plan-$$.md', process.argv[1])" '<the prompt string from Step 3>' && node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" task --prompt-file /tmp/codex-review-plan-$$.md; rm -f /tmp/codex-review-plan-$$.md`,
+  command: `node -e "require('fs').writeFileSync('/tmp/codex-review-plan-$$.md', process.argv[1])" '<the prompt string from Step 3>' && node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" task --model <selected-model> --effort <selected-effort> --prompt-file /tmp/codex-review-plan-$$.md; rm -f /tmp/codex-review-plan-$$.md`,
   description: "Codex plan review",
   run_in_background: true
 })

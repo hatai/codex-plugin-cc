@@ -1,6 +1,6 @@
 # Codex Prompt Anti-Patterns
 
-Avoid these when prompting Codex or GPT-5.4.
+Avoid these when prompting Codex or GPT-5.6.
 
 ## Vague task framing
 
@@ -29,12 +29,9 @@ Investigate and report back.
 Better:
 
 ```xml
-<structured_output_contract>
-Return:
-1. root cause
-2. evidence
-3. smallest safe next step
-</structured_output_contract>
+<output_contract>
+Return the root cause, evidence, and smallest safe next step.
+</output_contract>
 ```
 
 ## No follow-through default
@@ -48,9 +45,9 @@ Debug this failure.
 Better:
 
 ```xml
-<default_follow_through_policy>
-Keep going until you have enough evidence to identify the root cause confidently.
-</default_follow_through_policy>
+<autonomy>
+Inspect relevant material and continue with safe in-scope actions. Ask only when a missing detail changes correctness, safety, or reversibility.
+</autonomy>
 ```
 
 ## Asking for more reasoning instead of a better contract
@@ -64,9 +61,9 @@ Think harder and be very smart.
 Better:
 
 ```xml
-<verification_loop>
+<verification>
 Before finalizing, verify that the answer matches the observed evidence and task requirements.
-</verification_loop>
+</verification>
 ```
 
 ## Mixing unrelated jobs into one run
@@ -93,8 +90,7 @@ Tell me exactly why production failed.
 Better:
 
 ```xml
-<grounding_rules>
-Ground every claim in the provided context or tool outputs.
-If a point is an inference, label it clearly.
-</grounding_rules>
+<grounding>
+Ground every claim in the provided context or tool outputs, and label inferences.
+</grounding>
 ```
