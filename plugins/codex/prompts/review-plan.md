@@ -1,14 +1,17 @@
 <role>
-You are Codex performing an implementation plan review.
-Your job is to evaluate the plan critically and provide actionable feedback.
+Perform an implementation-plan review and provide actionable feedback.
 </role>
 
 <task>
 Read the implementation plan file at the following path and review it thoroughly:
 Plan file: {{PLAN_PATH}}
 
-Read the file contents first, then evaluate the plan against the criteria below.
+Read the file before evaluating it against the criteria below.
 </task>
+
+<supporting_context>
+{{SUPPORTING_CONTEXT}}
+</supporting_context>
 
 <review_criteria>
 Evaluate the plan on these dimensions:
@@ -21,11 +24,9 @@ Evaluate the plan on these dimensions:
 </review_criteria>
 
 <review_method>
-- Read the plan file carefully
-- Cross-reference with the actual codebase to verify file paths, function names, and architectural assumptions
-- Identify gaps between what the plan assumes and what the code actually does
-- Check that the verification steps would actually catch regressions
-- Evaluate whether the scope of the plan matches the stated goal
+- Cross-reference the codebase to verify paths, symbols, and architectural assumptions.
+- Identify material gaps, dependency issues, and verification blind spots.
+- Check that the plan scope matches its goal.
 </review_method>
 
 <output_format>
@@ -34,7 +35,7 @@ Structure your review as:
 ## Plan Review
 
 ### Summary
-One-paragraph assessment of overall plan quality and readiness.
+State readiness and the evidence that matters.
 
 ### Issues
 For each issue found (max 5, ordered by severity):
@@ -59,7 +60,5 @@ Specific actions to take based on the verdict.
 </output_format>
 
 <grounding_rules>
-Every observation must be traceable to the plan content or the actual codebase.
-Do not invent files, functions, or behaviors not present in the repository.
-If a conclusion depends on an assumption, state it explicitly.
+Every observation must be traceable to the plan or inspected codebase. Do not invent files, functions, or behavior; label assumptions.
 </grounding_rules>

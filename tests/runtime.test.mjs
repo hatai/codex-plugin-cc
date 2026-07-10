@@ -364,6 +364,8 @@ test("review accepts the quoted raw argument style for built-in base-branch revi
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Reviewed changes against main/);
   assert.match(result.stdout, /No material issues found/);
+  const state = JSON.parse(fs.readFileSync(path.join(binDir, "fake-codex-state.json"), "utf8"));
+  assert.equal(state.lastThreadStart.model, "gpt-5.6-terra");
 });
 
 test("adversarial review renders structured findings over app-server turn/start", () => {
@@ -384,6 +386,30 @@ test("adversarial review renders structured findings over app-server turn/start"
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Missing empty-state guard/);
+  const state = JSON.parse(fs.readFileSync(path.join(binDir, "fake-codex-state.json"), "utf8"));
+  assert.equal(state.lastTurnStart.model, "gpt-5.6-terra");
+  assert.equal(state.lastTurnStart.effort, "high");
+});
+
+test("adversarial review preserves an explicit reasoning-effort override", () => {
+  const repo = makeTempDir();
+  const binDir = makeTempDir();
+  installFakeCodex(binDir);
+  initGitRepo(repo);
+  fs.mkdirSync(path.join(repo, "src"));
+  fs.writeFileSync(path.join(repo, "src", "app.js"), "export const value = items[0];\n");
+  run("git", ["add", "src/app.js"], { cwd: repo });
+  run("git", ["commit", "-m", "init"], { cwd: repo });
+  fs.writeFileSync(path.join(repo, "src", "app.js"), "export const value = items[0].id;\n");
+
+  const result = run("node", [SCRIPT, "adversarial-review", "--effort", "low"], {
+    cwd: repo,
+    env: buildEnv(binDir)
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const state = JSON.parse(fs.readFileSync(path.join(binDir, "fake-codex-state.json"), "utf8"));
+  assert.equal(state.lastTurnStart.effort, "low");
 });
 
 test("adversarial review accepts the same base-branch targeting as review", () => {
@@ -763,7 +789,28 @@ test("task --fresh is treated as routing control and does not leak into the prom
   assert.equal(fakeState.lastTurnStart.prompt, "diagnose the flaky test");
 });
 
-test("task forwards model selection and reasoning effort to app-server turn/start", () => {
+test("task defaults to GPT-5.6 Terra with high reasoning effort", () => {
+  const repo = makeTempDir();
+  const binDir = makeTempDir();
+  const statePath = path.join(binDir, "fake-codex-state.json");
+  installFakeCodex(binDir);
+  initGitRepo(repo);
+  fs.writeFileSync(path.join(repo, "README.md"), "hello\n");
+  run("git", ["add", "README.md"], { cwd: repo });
+  run("git", ["commit", "-m", "init"], { cwd: repo });
+
+  const result = run("node", [SCRIPT, "task", "diagnose the failing test"], {
+    cwd: repo,
+    env: buildEnv(binDir)
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const fakeState = JSON.parse(fs.readFileSync(statePath, "utf8"));
+  assert.equal(fakeState.lastTurnStart.model, "gpt-5.6-terra");
+  assert.equal(fakeState.lastTurnStart.effort, "high");
+});
+
+test("task forwards explicit model selection and reasoning effort to app-server turn/start", () => {
   const repo = makeTempDir();
   const binDir = makeTempDir();
   const statePath = path.join(binDir, "fake-codex-state.json");
@@ -1967,6 +2014,8 @@ test("stop hook runs a stop-time review task and blocks on findings when the rev
   assert.match(fakeState.lastTurnStart.prompt, /<compact_output_contract>/i);
   assert.match(fakeState.lastTurnStart.prompt, /Only review the work from the previous Claude turn/i);
   assert.match(fakeState.lastTurnStart.prompt, /I completed the refactor and updated the retry logic\./);
+  assert.equal(fakeState.lastTurnStart.model, "gpt-5.6-terra");
+  assert.equal(fakeState.lastTurnStart.effort, "high");
 
   const status = run("node", [SCRIPT, "status"], {
     cwd: repo,

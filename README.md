@@ -145,7 +145,7 @@ Examples:
 /codex:rescue investigate why the tests started failing
 /codex:rescue fix the failing test with the smallest safe patch
 /codex:rescue --resume apply the top fix from the last run
-/codex:rescue --model gpt-5.4-mini --effort medium investigate the flaky integration test
+/codex:rescue --model gpt-5.6-luna --effort medium investigate the flaky integration test
 /codex:rescue --model spark fix the issue quickly
 /codex:rescue --background investigate the regression
 ```
@@ -158,7 +158,7 @@ Ask Codex to redesign the database connection to be more resilient.
 
 **Notes:**
 
-- if you do not pass `--model` or `--effort`, Codex chooses its own defaults.
+- if you do not pass `--model` or `--effort`, the plugin uses `gpt-5.6-terra` with `high` reasoning effort for task-based runs; the built-in normal reviewer uses its own reasoning-effort setting.
 - if you say `spark`, the plugin maps that to `gpt-5.3-codex-spark`
 - follow-up rescue requests can continue the latest Codex task in the repo
 
@@ -270,10 +270,10 @@ The Codex plugin wraps the [Codex app server](https://developers.openai.com/code
 
 ### Common Configurations
 
-If you want to change the default reasoning effort or the default model that gets used by the plugin, you can define that inside your user-level or project-level `config.toml`. For example to always use `gpt-5.4-mini` on `high` for a specific project you can add the following to a `.codex/config.toml` file at the root of the directory you started Claude in:
+The plugin defaults task-based runs to `gpt-5.6-terra` on `high`. Use `/codex:rescue --model ... --effort ...` when a rescue request needs different settings. Codex user-level or project-level `config.toml` remains available for other Codex workflows. For example:
 
 ```toml
-model = "gpt-5.4-mini"
+model = "gpt-5.6-luna"
 model_reasoning_effort = "high"
 ```
 
