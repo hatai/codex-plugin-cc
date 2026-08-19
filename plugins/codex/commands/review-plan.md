@@ -1,7 +1,7 @@
 ---
 description: Review a Claude Code plan via Codex and fix issues found
-argument-hint: '[--wait|--background] [plan-file-path]'
-allowed-tools: Read, Glob, Grep, Edit, Bash(node:*), AskUserQuestion
+argument-hint: '[--wait|--resume] [plan-file-path]'
+allowed-tools: Read, Glob, Grep, Edit, Bash(node:*)
 ---
 
 Send a Claude Code implementation plan to Codex for review. If critical issues are found, fix the plan based on the feedback.
@@ -13,6 +13,11 @@ Core constraint:
 - Your job is to run the Codex review and, if the verdict is not READY, fix the plan file based on the issues found.
 - Do not fix issues in any file other than the plan file itself.
 - Always display the Codex review output verbatim before any modifications.
+
+Execution modes:
+- Default: launch the review in the background, then check results and apply fixes automatically on completion (Steps 1-6).
+- `--wait`: run the review in the foreground, then fix immediately.
+- `--resume`: recovery mode. Skip Steps 1-5 entirely and follow the Recovery flow at the end of this document. Use it when a previous session ended before a background review completed or before its fixes were applied.
 
 Step 1: Identify the plan file
 
@@ -53,12 +58,10 @@ Step 3: Build the review prompt
 
 Step 4: Determine execution mode
 
-- If the raw arguments include `--wait`, do not ask. Run in the foreground.
-- If the raw arguments include `--background`, do not ask. Run in a Claude background task.
-- Otherwise, since plan reviews are typically small, recommend waiting.
-- Use `AskUserQuestion` exactly once with two options, putting the recommended option first and suffixing its label with `(Recommended)`:
-  - `Wait for results`
-  - `Run in background`
+- Always run in a Claude background task by default. Do not ask the user.
+- If the raw arguments include `--wait`, run in the foreground instead (explicit opt-in for synchronous review-and-fix).
+- If the raw arguments include `--resume`, this step does not apply; follow the Recovery flow instead.
+- Never use `AskUserQuestion` to select the execution mode.
 
 Step 4a: Select the Codex model and reasoning effort
 
@@ -86,7 +89,7 @@ node -e "require('fs').writeFileSync('/tmp/codex-review-plan-$$.md', process.arg
 - Display the command stdout verbatim to the user.
 - Do not paraphrase or add commentary before the review output.
 
-Background flow:
+Background flow (default):
 - Launch the review with `Bash` in the background using the same chained command pattern:
 ```typescript
 Bash({
@@ -95,15 +98,20 @@ Bash({
   run_in_background: true
 })
 ```
-- Do not call `BashOutput` or wait for completion in this turn.
-- After launching the command, tell the user: "Codex plan review started in the background. Check `/codex:status` for progress."
-- Skip Step 6 (modifications cannot be applied in background mode).
+- Do not call `BashOutput` or poll for completion in this turn. Claude Code will notify you when the background task finishes.
+- Keep the plan file path from Step 1 in context; you will need it when applying fixes after completion.
+- After launching the command, tell the user: "Codex plan review started in the background. Results will be checked and fixes applied automatically once it completes. If this session ends before then, run `/codex:review-plan --resume` in your next session to recover the result and continue fixing."
+- When the background task completion notification arrives:
+  1. Retrieve the full review output using `BashOutput` for that background task.
+  2. Display the Codex review output verbatim before any modifications (same rule as the foreground flow).
+  3. Continue to Step 6 and apply fixes if the Verdict is not READY.
+- If the background task failed or its output contains no determinable Verdict, display the raw output and stop without editing the plan file.
 
 Important: When embedding the prompt string in the `node -e` command, escape any single quotes in the prompt content by replacing `'` with `'\''` to prevent shell interpretation issues.
 
-Step 6: Fix the plan if needed (foreground only)
+Step 6: Fix the plan if needed
 
-After displaying the Codex review output:
+After displaying the Codex review output (immediately in foreground mode, or upon the background completion notification in background mode):
 
 1. Extract the Verdict from the output:
    - Look for the `<!-- VERDICT: ... -->` HTML comment marker.
@@ -120,7 +128,40 @@ After displaying the Codex review output:
    - After all edits, report the changes as a brief bulleted list.
 
 Argument handling:
-- Preserve the user's `--wait` and `--background` flags.  (default: `--wait`)
+- Preserve the user's `--wait` and `--resume` flags.  (default: `--background`)
 - Do not strip them yourself.
 - Do not add extra flags or rewrite the user's intent.
 - The first positional argument (if present and not a flag) is the plan file path.
+
+Recovery flow (--resume)
+
+Detect an unapplied review result from a previous session and resume fixing the plan. Never launch a new Codex review in this mode.
+
+1. Find the finished review job from the previous session:
+   - Run:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" status --all
+   ```
+   - `--all` is required: the default status output only lists jobs from the current session, and the job you need belongs to the previous one.
+   - Pick the most recent completed plan-review task job. If no finished job exists, tell the user no recoverable review was found and suggest running `/codex:review-plan` normally. Stop.
+
+2. Retrieve the stored review output:
+   - Run:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" result <job-id>
+   ```
+   - Display the output verbatim before any modifications (same rule as Step 6).
+
+3. Determine whether fixes are still needed:
+   - Extract the Verdict using the same rules as Step 6.
+   - If READY or undeterminable, no recovery is needed. Stop.
+   - Identify the plan file using the Step 1 priority order. The review output usually references the original absolute plan path from the review prompt; prefer that path when present. If `--resume` was given an explicit plan file path, use it.
+   - Compare the plan file's last-modified time with the job's completion time. If the plan was modified after the review completed, some fixes may already be applied: verify each issue against the current plan content and skip any that are no longer present.
+
+4. Resume the fixes:
+   - Follow Step 6 exactly: apply each remaining issue's Suggestion with the `Edit` tool on the plan file only.
+   - After all edits, report the changes as a brief bulleted list.
+
+Recovery limitations:
+- Recovery depends on the companion job state for this workspace, which is stored outside the repository and capped at the most recent 50 jobs. Very old reviews may no longer be recoverable; in that case rerun `/codex:review-plan` normally.
+- If the Codex session ID is present in the result output, the user can also inspect the original review interactively with `codex resume <session-id>`.
