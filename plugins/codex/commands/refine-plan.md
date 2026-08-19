@@ -1,6 +1,6 @@
 ---
 description: Repeatedly review and refine a Claude Code plan via Codex until no critical issues remain (max 5 rounds)
-argument-hint: '[plan-file-path]'
+argument-hint: '[--resume] [plan-file-path]'
 allowed-tools: Read, Glob, Grep, Edit, Bash(node:*), AskUserQuestion
 ---
 
@@ -8,6 +8,10 @@ Iteratively review and refine a Claude Code implementation plan by running Codex
 
 Raw slash-command arguments:
 `$ARGUMENTS`
+
+Execution modes:
+- Default: run the refinement loop from Round 1 (Steps 1-4).
+- `--resume`: recovery mode. Do not start a new loop from Round 1; follow the Recovery flow at the end of this document instead. Use it when a previous session ended mid-loop (typically after a Codex review completed but before its fixes were applied).
 
 Step 1: Identify the plan file
 
@@ -85,3 +89,41 @@ If all 5 rounds are completed without reaching READY:
 - Inform the user that the maximum number of refinement rounds has been reached and manual review may be needed.
 
 Important: When embedding the prompt string in the `node -e` command, escape any single quotes in the prompt content by replacing `'` with `'\''` to prevent shell interpretation issues.
+
+Argument handling:
+- Preserve the user's `--resume` flag. Do not strip it or add extra flags.
+- The first positional argument (if present and not a flag) is the plan file path.
+
+Recovery flow (--resume)
+
+Detect an unapplied review result from a previous session's interrupted loop and continue refining. Never launch a new Codex review during recovery itself.
+
+1. Find the finished review job from the previous session:
+   - Run:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" status --all
+   ```
+   - `--all` is required: the default status output only lists jobs from the current session, and the interrupted round's job belongs to the previous one.
+   - Pick the most recent completed plan-review task job. If no finished job exists, tell the user no recoverable review was found and suggest running `/codex:refine-plan` normally. Stop.
+
+2. Retrieve the stored review output:
+   - Run:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" result <job-id>
+   ```
+   - Display the output verbatim before any modifications (same rule as the normal loop).
+
+3. Determine where the loop was interrupted:
+   - Extract the Verdict using the same rules as Step 3.5. If the verdict cannot be determined, treat it as NEEDS_IMPROVEMENT and continue.
+   - If READY, no recovery is needed; the plan was already approved. Stop.
+   - Identify the plan file using the Step 1 priority order. The review output usually references the original absolute plan path from the review prompt; prefer that path when present. If `--resume` was given an explicit plan file path, use it.
+   - Compare the plan file's last-modified time with the job's completion time. If the plan was modified after the review completed, some fixes from that review may already be applied: verify each issue against the current plan content and skip any that are no longer present.
+
+4. Resume the loop:
+   - Apply any remaining Suggestions from the recovered review with the `Edit` tool on the plan file only, and report the changes as a brief bulleted list (same as Step 3.7).
+   - Then continue with Step 3's refinement loop for the remaining rounds. The recovered review counts as one round: if every issue was already applied (i.e., the previous session completed the fix step before interruption), start the next review round immediately and count it as the following round; if fixes were applied in this session, the round of the recovered review is consumed.
+
+Recovery limitations:
+- Recovery depends on the companion job state for this workspace, which is stored outside the repository and capped at the most recent 50 jobs. Very old reviews may no longer be recoverable; in that case rerun `/codex:refine-plan` normally.
+- The recovered round number is not recorded in the review output, so the loop conservatively counts the recovered review as one full round when resuming. This can reduce the remaining refinement budget by one compared with an uninterrupted run.
+- If the Codex session ID is present in the result output, the user can also inspect the original review interactively with `codex resume <session-id>`.
