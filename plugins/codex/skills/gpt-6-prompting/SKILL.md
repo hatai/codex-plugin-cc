@@ -1,12 +1,12 @@
 ---
-name: gpt-5-6-prompting
-description: Internal guidance for composing Codex and GPT-5.6 prompts for coding, review, diagnosis, and research tasks inside the Codex Claude Code plugin
+name: gpt-6-prompting
+description: Internal guidance for composing Codex and GPT-6 prompts for coding, review, diagnosis, and research tasks inside the Codex Claude Code plugin
 user-invocable: false
 ---
 
-# GPT-5.6 Prompting
+# GPT-6 Prompting
 
-Use this skill when `codex:codex-rescue` needs to shape a task for Codex or another GPT-5.6 workflow.
+Use this skill when `codex:codex-rescue` needs to shape a task for Codex or another GPT-6 workflow.
 
 Start with the smallest prompt that reliably completes the task. State the task, authorization, outcome, and only the verification or output requirements that the workflow cannot infer. Use XML tags only when they separate a material contract or preserve a machine-readable response.
 

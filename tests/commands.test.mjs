@@ -115,7 +115,7 @@ test("rescue command absorbs continue semantics", () => {
   assert.match(rescue, /default to foreground/i);
   assert.match(rescue, /Do not forward them to `task`/i);
   assert.match(rescue, /`--model` and `--effort` are runtime-selection flags/i);
-  assert.match(rescue, /runtime defaults them to `gpt-5\.6-terra` and `high`/i);
+  assert.match(rescue, /runtime defaults them to `gpt-6\.1-terra` and `high`/i);
   assert.match(rescue, /If they ask for `spark`, map it to `gpt-5\.3-codex-spark`/i);
   assert.match(rescue, /If the request includes `--resume`, do not ask whether to continue/i);
   assert.match(rescue, /If the request includes `--fresh`, do not ask whether to continue/i);
@@ -134,19 +134,19 @@ test("rescue command absorbs continue semantics", () => {
   assert.match(agent, /Use exactly one `Bash` call/i);
   assert.match(agent, /Do not inspect the repository, read files, grep, monitor progress, poll status, fetch results, cancel jobs, summarize output, or do any follow-up work of your own/i);
   assert.match(agent, /Do not call `review`, `adversarial-review`, `status`, `result`, or `cancel`/i);
-  assert.match(agent, /runtime defaults them to `gpt-5\.6-terra` and `high`/i);
+  assert.match(agent, /runtime defaults them to `gpt-6\.1-terra` and `high`/i);
   assert.match(agent, /If the user asks for `spark`, map that to `--model gpt-5\.3-codex-spark`/i);
-  assert.match(agent, /If the user asks for a concrete model name such as `gpt-5\.6-luna`, pass it through with `--model`/i);
+  assert.match(agent, /If the user asks for a concrete model name such as `gpt-6-luna`, pass it through with `--model`/i);
   assert.match(agent, /Return the stdout of the `codex-companion` command exactly as-is/i);
   assert.match(agent, /If the Bash call fails or Codex cannot be invoked, return nothing/i);
-  assert.match(agent, /gpt-5-6-prompting/);
+  assert.match(agent, /gpt-6-prompting/);
   assert.match(agent, /only to tighten the user's request into a better Codex prompt/i);
   assert.match(agent, /Do not use that skill to inspect the repository, reason through the problem yourself, draft a solution, or do any independent work/i);
   assert.match(runtimeSkill, /only job is to invoke `task` once and return that stdout unchanged/i);
   assert.match(runtimeSkill, /Do not call `setup`, `review`, `adversarial-review`, `status`, `result`, or `cancel`/i);
-  assert.match(runtimeSkill, /use the `gpt-5-6-prompting` skill to rewrite the user's request into a tighter Codex prompt/i);
+  assert.match(runtimeSkill, /use the `gpt-6-prompting` skill to rewrite the user's request into a tighter Codex prompt/i);
   assert.match(runtimeSkill, /That prompt drafting is the only Claude-side work allowed/i);
-  assert.match(runtimeSkill, /runtime defaults them to `gpt-5\.6-terra` and `high`/i);
+  assert.match(runtimeSkill, /runtime defaults them to `gpt-6\.1-terra` and `high`/i);
   assert.match(runtimeSkill, /Map `spark` to `--model gpt-5\.3-codex-spark`/i);
   assert.match(runtimeSkill, /If the forwarded request includes `--background` or `--wait`, treat that as Claude-side execution control only/i);
   assert.match(runtimeSkill, /Strip it before calling `task`/i);
@@ -154,8 +154,8 @@ test("rescue command absorbs continue semantics", () => {
   assert.match(runtimeSkill, /Do not inspect the repository, read files, grep, monitor progress, poll status, fetch results, cancel jobs, summarize output, or do any follow-up work of your own/i);
   assert.match(runtimeSkill, /If the Bash call fails or Codex cannot be invoked, return nothing/i);
   assert.match(readme, /`codex:codex-rescue` subagent/i);
-  assert.match(readme, /plugin uses `gpt-5\.6-terra` with `high` reasoning effort/i);
-  assert.match(readme, /--model gpt-5\.6-luna --effort medium/i);
+  assert.match(readme, /plugin uses `gpt-6\.1-terra` with `high` reasoning effort/i);
+  assert.match(readme, /--model gpt-6-luna --effort medium/i);
   assert.match(readme, /`spark`, the plugin maps that to `gpt-5\.3-codex-spark`/i);
   assert.match(readme, /continue a previous Codex task/i);
   assert.match(readme, /### `\/codex:setup`/);
@@ -189,8 +189,8 @@ test("transfer, result, and cancel commands are exposed as deterministic runtime
 
 test("internal docs use task terminology for rescue runs", () => {
   const runtimeSkill = read("skills/codex-cli-runtime/SKILL.md");
-  const promptingSkill = read("skills/gpt-5-6-prompting/SKILL.md");
-  const promptRecipes = read("skills/gpt-5-6-prompting/references/codex-prompt-recipes.md");
+  const promptingSkill = read("skills/gpt-6-prompting/SKILL.md");
+  const promptRecipes = read("skills/gpt-6-prompting/references/codex-prompt-recipes.md");
 
   assert.match(runtimeSkill, /codex-companion\.mjs" task "<raw arguments>"/);
   assert.match(runtimeSkill, /Use `task` for every rescue request/i);
@@ -207,9 +207,9 @@ test("plan review commands select an explicit model and effort from plan complex
   const refinePlan = read("commands/refine-plan.md");
 
   for (const source of [reviewPlan, refinePlan]) {
-    assert.match(source, /gpt-5\.6-luna.*medium/i);
-    assert.match(source, /gpt-5\.6-terra.*high/i);
-    assert.match(source, /gpt-5\.6-sol.*xhigh/i);
+    assert.match(source, /gpt-6-luna.*medium/i);
+    assert.match(source, /gpt-6\.1-terra.*high/i);
+    assert.match(source, /gpt-6\.1-sol.*xhigh/i);
     assert.match(source, /--model <selected-model> --effort <selected-effort>/i);
   }
 });

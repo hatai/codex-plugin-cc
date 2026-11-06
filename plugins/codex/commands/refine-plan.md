@@ -52,9 +52,9 @@ For each round (1 through 5):
    - Interpolate the collected content into the review template's `<supporting_context>` block.
 
 3. **Select model and reasoning effort**: Inspect the current plan before this round and choose values without asking the user:
-   - Use `gpt-5.6-luna` with `medium` for a small, conventional plan in one subsystem with established patterns and low change risk.
-   - Use `gpt-5.6-terra` with `high` for the normal case: multiple files or components, moderate uncertainty, or meaningful integration and verification work.
-   - Use `gpt-5.6-sol` with `xhigh` for a cross-cutting, security- or data-sensitive, migration-heavy, or otherwise high-risk plan whose architectural assumptions need deep scrutiny.
+   - Use `gpt-6-luna` with `medium` for a small, conventional plan in one subsystem with established patterns and low change risk.
+   - Use `gpt-6.1-terra` with `high` for the normal case: multiple files or components, moderate uncertainty, or meaningful integration and verification work.
+   - Use `gpt-6.1-sol` with `xhigh` for a cross-cutting, security- or data-sensitive, migration-heavy, or otherwise high-risk plan whose architectural assumptions need deep scrutiny.
    - Store the values as `<selected-model>` and `<selected-effort>`. Reassess them in every round after the plan changes.
 
 4. **Run Codex review**: Execute the same review flow as `/codex:review-plan`:
