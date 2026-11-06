@@ -67,9 +67,9 @@ Step 4a: Select the Codex model and reasoning effort
 
 Inspect the plan and choose values before launching Codex. Do not ask the user for this routine selection.
 
-- Use `gpt-5.6-luna` with `medium` for a small, conventional plan in one subsystem with established patterns and low change risk.
-- Use `gpt-5.6-terra` with `high` for the normal case: multiple files or components, moderate uncertainty, or meaningful integration and verification work.
-- Use `gpt-5.6-sol` with `xhigh` for a cross-cutting, security- or data-sensitive, migration-heavy, or otherwise high-risk plan whose architectural assumptions need deep scrutiny.
+- Use `gpt-6-luna` with `medium` for a small, conventional plan in one subsystem with established patterns and low change risk.
+- Use `gpt-6.1-terra` with `high` for the normal case: multiple files or components, moderate uncertainty, or meaningful integration and verification work.
+- Use `gpt-6.1-sol` with `xhigh` for a cross-cutting, security- or data-sensitive, migration-heavy, or otherwise high-risk plan whose architectural assumptions need deep scrutiny.
 
 Store the chosen values as `<selected-model>` and `<selected-effort>`. Reassess them if the plan changes materially before a later review invocation.
 
